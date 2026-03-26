@@ -26,7 +26,7 @@ export async function getCurrentUser() {
   return data.user;
 }
 
-export async function getActiveMembership() {
+export async function getActiveMembership(): Promise<Membership | null> {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return null;
@@ -54,7 +54,7 @@ export async function requireUser() {
   return user;
 }
 
-export async function requireWorkspace() {
+export async function requireWorkspace(): Promise<Membership> {
   const membership = await getActiveMembership();
   if (!membership) redirect("/onboarding");
   return membership;

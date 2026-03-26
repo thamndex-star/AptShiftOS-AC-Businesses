@@ -6,7 +6,7 @@ export const WORKSPACE_CURRENCY_OPTIONS = [
   { value: "GBP", label: "GBP (£)" },
 ] as const;
 
-const SUPPORTED = new Set(WORKSPACE_CURRENCY_OPTIONS.map((o) => o.value));
+const SUPPORTED = new Set<string>(WORKSPACE_CURRENCY_OPTIONS.map((o) => o.value));
 
 export function normalizeWorkspaceCurrency(input: string | null | undefined): string {
   const code = (input ?? "USD").trim().toUpperCase();
