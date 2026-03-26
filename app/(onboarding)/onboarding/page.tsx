@@ -25,18 +25,22 @@ export default function OnboardingPage() {
 
   return (
     <main className="mx-auto grid min-h-screen w-full max-w-3xl gap-6 px-6 py-16 md:grid-cols-2">
+      <section className="md:col-span-2">
+        <h1 className="text-3xl font-semibold text-slate-900">Welcome 👋</h1>
+        <p className="mt-2 text-sm text-slate-600">Let&apos;s set up your business in under 1 minute</p>
+      </section>
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Create workspace</h2>
-        <p className="mt-1 text-sm text-slate-500">You will be added as owner.</p>
+        <h2 className="text-xl font-semibold">Set up your business</h2>
+        <p className="mt-1 text-sm text-slate-500">Start managing your jobs, deposits, and cash flow in one place.</p>
         <div className="mt-4 space-y-3">
-          <label className="block text-sm font-medium text-slate-700">Business Name</label>
+          <label className="block text-sm font-medium text-slate-700">What&apos;s your business name?</label>
           <Input
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
             placeholder="e.g. Cool Air Services"
             aria-label="Business name"
           />
-          <label className="block text-sm font-medium text-slate-700">Select currency</label>
+          <label className="block text-sm font-medium text-slate-700">Which currency do you use?</label>
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -50,13 +54,13 @@ export default function OnboardingPage() {
             ))}
           </select>
           <Button onClick={() => submit("/api/onboarding/create-workspace", { name: workspaceName, currency })}>
-            Create
+            Set up my business
           </Button>
         </div>
       </section>
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Join workspace</h2>
-        <p className="mt-1 text-sm text-slate-500">Join as technician by invite code.</p>
+        <h2 className="text-xl font-semibold">Join a team</h2>
+        <p className="mt-1 text-sm text-slate-500">Enter an invite code to join an existing business.</p>
         <div className="mt-4 space-y-3">
           <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Invite code" />
           <Button variant="secondary" onClick={() => submit("/api/onboarding/join-workspace", { inviteCode })}>
