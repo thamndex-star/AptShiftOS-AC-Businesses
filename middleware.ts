@@ -32,7 +32,13 @@ export async function middleware(request: NextRequest) {
   );
 
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname.includes(".")) return response;
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/auth/callback") ||
+    pathname.includes(".")
+  )
+    return response;
 
   const { data } = await supabase.auth.getUser();
   const user = data.user;

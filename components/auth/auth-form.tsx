@@ -19,23 +19,33 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     setLoading(true);
     setError(null);
     setInfo(null);
-    const supabase = createClient();
-    const payload = { email, password };
-    const result =
-      mode === "login" ? await supabase.auth.signInWithPassword(payload) : await supabase.auth.signUp(payload);
-    if (result.error) {
-      setError(result.error.message);
+
+    try {
+      const supabase = createClient();
+      const payload = { email, password };
+      const result =
+        mode === "login"
+          ? await supabase.auth.signInWithPassword(payload)
+          : await supabase.auth.signUp(payload);
+
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
+
+      // Email confirmation is on – no session yet; ask the user to confirm.
+      if (mode === "signup" && !result.data.session) {
+        setInfo("Almost there! Check your email and click the confirmation link to activate your account.");
+        return;
+      }
+
+      router.refresh();
+      router.push("/onboarding");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-    if (mode === "signup" && !result.data.session) {
-      setInfo("Check your email to confirm your account, then log in.");
-      setLoading(false);
-      return;
-    }
-    router.refresh();
-    router.push("/onboarding");
-    setLoading(false);
   }
 
   return (
@@ -48,10 +58,18 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      {info && <p className="text-sm text-slate-600">{info}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {info && (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          {info}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {error}
+        </div>
+      )}
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Please wait..." : mode === "login" ? "Login" : "Create account"}
+        {loading ? "Please wait…" : mode === "login" ? "Login" : "Create account"}
       </Button>
     </form>
   );
