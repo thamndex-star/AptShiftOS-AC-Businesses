@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (lookupError) return fail(lookupError.message);
-  if (!workspace) return fail("Invalid invite code. Ask your admin for the correct code.", 404);
+  if (!workspace) return fail("Invalid invite code", 404);
 
   const { data: existing } = await supabase
     .from("workspace_members")

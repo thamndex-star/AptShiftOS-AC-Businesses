@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
 export type Membership = Database["public"]["Tables"]["workspace_members"]["Row"];
-export type ActiveWorkspace = Pick<Database["public"]["Tables"]["workspaces"]["Row"], "id" | "name" | "currency">;
+export type ActiveWorkspace = Pick<Database["public"]["Tables"]["workspaces"]["Row"], "id" | "name" | "currency" | "invite_code">;
 
 /** Loads the active workspace row. Pass `membership` from `requireWorkspace()` to avoid an extra membership query. */
 export async function getActiveWorkspace(membership?: Membership | null): Promise<ActiveWorkspace | null> {
@@ -13,7 +13,7 @@ export async function getActiveWorkspace(membership?: Membership | null): Promis
   const supabase = await createClient();
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("id, name, currency")
+    .select("id, name, currency, invite_code")
     .eq("id", m.workspace_id)
     .maybeSingle();
 

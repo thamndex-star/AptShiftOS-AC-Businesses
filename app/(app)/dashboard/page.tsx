@@ -1,5 +1,6 @@
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { PendingDepositsPanel, type PendingDepositRow } from "@/components/dashboard/pending-deposits-panel";
+import { InviteTeamPanel } from "@/components/dashboard/invite-team-panel";
 import { normalizeWorkspaceCurrency } from "@/lib/currency";
 import { getActiveWorkspace, requireWorkspace } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,7 @@ export default async function DashboardPage() {
   const membership = await requireWorkspace();
   const workspaceMeta = await getActiveWorkspace(membership);
   const currency = normalizeWorkspaceCurrency(workspaceMeta?.currency);
+  const inviteCode = workspaceMeta?.invite_code ?? "";
   const supabase = await createClient();
   const workspaceId = membership.workspace_id;
 
@@ -117,6 +119,8 @@ export default async function DashboardPage() {
           hint="Total still owed (all open invoices)"
         />
       </div>
+
+      <InviteTeamPanel inviteCode={inviteCode} />
 
       <PendingDepositsPanel rows={pendingDepositRows} currency={currency} />
     </section>
