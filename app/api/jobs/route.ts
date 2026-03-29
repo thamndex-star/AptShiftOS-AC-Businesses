@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canManage } from "@/lib/auth";
+import { canManage, getActiveMembership } from "@/lib/auth";
 import { parseNumber } from "@/lib/helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return NextResponse.redirect(new URL("/login", request.url));
 
-  const { data: member } = await supabase.from("workspace_members").select("*").eq("user_id", auth.user.id).maybeSingle();
+  const member = await getActiveMembership();
   if (!member || !canManage(member.role)) return NextResponse.redirect(new URL("/jobs", request.url));
 
   const form = await request.formData();

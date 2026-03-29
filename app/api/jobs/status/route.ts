@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canManage } from "@/lib/auth";
+import { canManage, getActiveMembership } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 const transitions: Record<string, string[]> = {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return err("You must be signed in.", 401);
 
-  const { data: member } = await supabase.from("workspace_members").select("*").eq("user_id", auth.user.id).maybeSingle();
+  const member = await getActiveMembership();
   if (!member) return err("You are not part of a workspace.", 403);
 
   const { jobId, nextStatus } = await parseBody(request);

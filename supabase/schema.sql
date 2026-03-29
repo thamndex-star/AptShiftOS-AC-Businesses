@@ -105,7 +105,12 @@ after insert on auth.users
 for each row execute procedure handle_new_user();
 
 create or replace function is_workspace_member(ws_id uuid)
-returns boolean language sql stable as $$
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
   select exists (
     select 1 from workspace_members wm
     where wm.workspace_id = ws_id and wm.user_id = auth.uid()
@@ -113,7 +118,12 @@ returns boolean language sql stable as $$
 $$;
 
 create or replace function is_workspace_admin(ws_id uuid)
-returns boolean language sql stable as $$
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
   select exists (
     select 1 from workspace_members wm
     where wm.workspace_id = ws_id and wm.user_id = auth.uid() and wm.role in ('owner', 'admin')
@@ -170,7 +180,7 @@ create policy "jobs_technician_update_assigned" on jobs for update
   )
   with check (technician_id = auth.uid());
 
-create policy "invoices_member_read" on invoices for select using (is_workspace_member(workspace_id));
+create policy "invoices_admin_read" on invoices for select using (is_workspace_admin(workspace_id));
 create policy "invoices_admin_write" on invoices for all using (is_workspace_admin(workspace_id)) with check (is_workspace_admin(workspace_id));
 
 create policy "messages_member_read" on messages for select using (is_workspace_member(workspace_id));

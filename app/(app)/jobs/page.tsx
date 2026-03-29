@@ -14,18 +14,19 @@ export default async function JobsPage() {
   const currency = normalizeWorkspaceCurrency(workspaceMeta?.currency);
   const supabase = await createClient();
   const ws = membership.workspace_id;
+  const manager = canManage(membership.role);
 
   let jobsQuery = supabase.from("jobs").select("*").eq("workspace_id", ws).order("created_at", { ascending: false });
-  if (membership.role === "technician") jobsQuery = jobsQuery.eq("technician_id", membership.user_id);
-  const [{ data: jobs }, { data: technicians }] = await Promise.all([
-    jobsQuery,
-    supabase.from("workspace_members").select("user_id, role").eq("workspace_id", ws),
-  ]);
+  if (!manager) jobsQuery = jobsQuery.eq("technician_id", membership.user_id);
+  const { data: jobs } = await jobsQuery;
+  const { data: technicians } = manager
+    ? await supabase.from("workspace_members").select("user_id, role").eq("workspace_id", ws)
+    : { data: [] as Array<{ user_id: string; role: string }> };
 
   return (
     <section className="space-y-6">
       <h1 className="text-2xl font-semibold">Jobs</h1>
-      {canManage(membership.role) && (
+      {manager && (
         <Card>
           <form action="/api/jobs" method="post" className="grid gap-3 md:grid-cols-3">
             <Input name="customer_name" placeholder="Customer name" required />
@@ -49,7 +50,11 @@ export default async function JobsPage() {
           </form>
         </Card>
       )}
-      <KanbanBoard jobs={jobs ?? []} currency={currency} />
+      {manager ? (
+        <KanbanBoard jobs={jobs ?? []} currency={currency} />
+      ) : (
+        <p className="text-sm text-slate-500">You can view and update only jobs assigned to you.</p>
+      )}
       <Card>
         <h2 className="mb-3 text-lg font-semibold">Update job status</h2>
         <div className="space-y-2">

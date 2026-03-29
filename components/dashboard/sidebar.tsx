@@ -1,18 +1,27 @@
 import Link from "next/link";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { canManage, type Membership } from "@/lib/auth";
 
-const nav = [
+const fullNav = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/leads", label: "Leads" },
   { href: "/jobs", label: "Jobs" },
   { href: "/invoices", label: "Invoices" },
 ];
 
+const technicianNav = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/jobs", label: "Jobs" },
+];
+
 type SidebarProps = {
   businessName: string;
+  role: Membership["role"];
 };
 
-export function Sidebar({ businessName }: SidebarProps) {
+export function Sidebar({ businessName, role }: SidebarProps) {
+  const nav = canManage(role) ? fullNav : technicianNav;
+
   return (
     <aside className="flex w-56 flex-col border-r border-slate-200 bg-white p-4">
       <h2 className="mb-6 text-lg font-semibold leading-snug text-slate-900 line-clamp-2">{businessName}</h2>

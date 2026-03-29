@@ -3,9 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
 
 export default async function LeadsPage() {
   const membership = await requireWorkspace();
+  if (!canManage(membership.role)) redirect("/jobs");
   const supabase = await createClient();
   const { data: leads } = await supabase
     .from("leads")

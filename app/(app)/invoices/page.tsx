@@ -2,11 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { normalizeWorkspaceCurrency } from "@/lib/currency";
 import { formatCurrency } from "@/lib/helpers";
-import { getActiveWorkspace, requireWorkspace } from "@/lib/auth";
+import { canManage, getActiveWorkspace, requireWorkspace } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function InvoicesPage() {
   const membership = await requireWorkspace();
+  if (!canManage(membership.role)) redirect("/jobs");
   const workspaceMeta = await getActiveWorkspace(membership);
   const currency = normalizeWorkspaceCurrency(workspaceMeta?.currency);
   const supabase = await createClient();

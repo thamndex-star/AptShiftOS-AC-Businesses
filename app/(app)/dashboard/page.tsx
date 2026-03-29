@@ -1,8 +1,9 @@
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { PendingDepositsPanel, type PendingDepositRow } from "@/components/dashboard/pending-deposits-panel";
 import { InviteTeamPanel } from "@/components/dashboard/invite-team-panel";
+import { TechnicianJobsPanel } from "@/components/dashboard/technician-jobs-panel";
 import { normalizeWorkspaceCurrency } from "@/lib/currency";
-import { getActiveWorkspace, requireWorkspace } from "@/lib/auth";
+import { canManage, getActiveWorkspace, requireWorkspace } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -15,6 +16,19 @@ export default async function DashboardPage() {
   const inviteCode = workspaceMeta?.invite_code ?? "";
   const supabase = await createClient();
   const workspaceId = membership.workspace_id;
+  const isTechnician = !canManage(membership.role);
+
+  if (isTechnician) {
+    const { data: assignedJobs } = await supabase
+      .from("jobs")
+      .select("id, customer_name, service_type, location, status")
+      .eq("workspace_id", workspaceId)
+      .eq("technician_id", membership.user_id)
+      .order("scheduled_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    return <TechnicianJobsPanel jobs={assignedJobs ?? []} />;
+  }
 
   const [
     paidDepositRows,

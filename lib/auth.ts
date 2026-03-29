@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -7,6 +8,7 @@ export type ActiveWorkspace = Pick<Database["public"]["Tables"]["workspaces"]["R
 
 /** Loads the active workspace row. Pass `membership` from `requireWorkspace()` to avoid an extra membership query. */
 export async function getActiveWorkspace(membership?: Membership | null): Promise<ActiveWorkspace | null> {
+  noStore();
   const m = membership ?? (await getActiveMembership());
   if (!m) return null;
 
@@ -21,12 +23,14 @@ export async function getActiveWorkspace(membership?: Membership | null): Promis
 }
 
 export async function getCurrentUser() {
+  noStore();
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   return data.user;
 }
 
 export async function getActiveMembership(): Promise<Membership | null> {
+  noStore();
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return null;
