@@ -16,48 +16,41 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
 }
 
 /**
- * PayFast requires "+" for spaces in redirect query
+ * 🔥 CRITICAL: DO NOT convert spaces to "+"
+ * PayFast expects %20 for signature AND query consistency
  */
-function payFastUrlEncode(value: string): string {
-  return encodeURIComponent(value).replace(/%20/g, "+");
+function encode(value: string): string {
+  return encodeURIComponent(value);
 }
 
-/** Sort ONLY for signature */
-function getSortedEntriesForSignature(rawData: Record<string, string>): Array<[string, string]> {
+/** Sort alphabetically for signature */
+function getSortedEntries(rawData: Record<string, string>): Array<[string, string]> {
   return Object.entries(rawData)
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .sort(([a], [b]) => a.localeCompare(b));
 }
 
-/** Keep original order for redirect query */
-function getOrderedEntriesForQuery(rawData: Record<string, string>): Array<[string, string]> {
+/** Keep original order for query */
+function getOrderedEntries(rawData: Record<string, string>): Array<[string, string]> {
   return Object.entries(rawData).filter(([, value]) => value !== undefined && value !== null && value !== "");
 }
 
-/**
- * 🚨 CRITICAL FIX:
- * Signature must use URL-ENCODED values (RFC3986)
- * BUT spaces must remain %20 (NOT +)
- */
-function generatePayfastSignature(sortedEntries: Array<[string, string]>): { baseString: string; signature: string } {
-  const baseString = sortedEntries
-    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`) // encode here
+function generateSignature(entries: Array<[string, string]>): string {
+  const baseString = entries
+    .map(([key, value]) => `${key}=${encode(value)}`)
     .join("&");
 
   console.log("[PayFast] BASE STRING:", baseString);
 
-  const signature = createHash("md5")
-    .update(baseString)
-    .digest("hex");
+  const signature = createHash("md5").update(baseString).digest("hex");
 
   console.log("[PayFast] SIGNATURE:", signature);
 
-  return { baseString, signature };
+  return signature;
 }
 
-/** Build redirect query (original order + + encoding) */
-function buildPayFastQueryString(orderedEntries: Array<[string, string]>, signature: string): string {
-  const pairs = orderedEntries.map(([key, value]) => `${key}=${payFastUrlEncode(value)}`);
+function buildQuery(entries: Array<[string, string]>, signature: string): string {
+  const pairs = entries.map(([key, value]) => `${key}=${encode(value)}`);
   pairs.push(`signature=${signature}`);
   return pairs.join("&");
 }
@@ -90,16 +83,14 @@ export function buildPayFastPaymentUrl(params: {
     custom_str1: params.workspaceId,
   });
 
-  const sortedEntries = getSortedEntriesForSignature(rawData);
-  const { baseString, signature } = generatePayfastSignature(sortedEntries);
+  const sorted = getSortedEntries(rawData);
+  const signature = generateSignature(sorted);
+  const ordered = getOrderedEntries(rawData);
+  const query = buildQuery(ordered, signature);
 
-  const queryEntries = getOrderedEntriesForQuery(rawData);
-  const query = buildPayFastQueryString(queryEntries, signature);
+  console.log("[PayFast] FINAL QUERY:", query);
 
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
-
-  console.log("[PayFast] RAW DATA:", rawData);
-  console.log("[PayFast] FINAL QUERY:", query);
 
   return `${baseUrl}?${query}`;
 }
