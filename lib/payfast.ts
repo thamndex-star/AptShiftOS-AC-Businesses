@@ -14,10 +14,32 @@ const PAYFAST_FORM_FIELD_ORDER = [
   "return_url",
   "cancel_url",
   "notify_url",
+  "name_first",
+  "name_last",
+  "email_address",
+  "cell_number",
   "m_payment_id",
   "amount",
   "item_name",
+  "item_description",
+  "custom_int1",
+  "custom_int2",
+  "custom_int3",
+  "custom_int4",
+  "custom_int5",
   "custom_str1",
+  "custom_str2",
+  "custom_str3",
+  "custom_str4",
+  "custom_str5",
+  "email_confirmation",
+  "confirmation_address",
+  "payment_method",
+  "subscription_type",
+  "billing_date",
+  "recurring_amount",
+  "frequency",
+  "cycles",
 ] as const;
 
 /** Keep only non-empty string values (after trim). */
@@ -32,25 +54,38 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
   return out;
 }
 
-function buildOrderedSearchParams(fields: Record<string, string>): URLSearchParams {
-  const params = new URLSearchParams();
+/**
+ * Mirror PHP urlencode behavior used in PayFast examples.
+ * encodeURIComponent leaves a few chars unescaped, so we encode them explicitly.
+ */
+function payFastUrlEncode(value: string): string {
+  return encodeURIComponent(value)
+    .replace(/!/g, "%21")
+    .replace(/'/g, "%27")
+    .replace(/\(/g, "%28")
+    .replace(/\)/g, "%29")
+    .replace(/\*/g, "%2A")
+    .replace(/~/g, "%7E")
+    .replace(/%20/g, "+");
+}
+
+function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
+  const pairs: string[] = [];
   for (const key of PAYFAST_FORM_FIELD_ORDER) {
     const val = fields[key];
     if (val !== undefined && val !== "") {
-      params.append(key, val);
+      pairs.push(`${key}=${payFastUrlEncode(val)}`);
     }
   }
-  return params;
+  return pairs;
 }
 
 /** Document field order; passphrase appended last as &passphrase=... when set. */
 function buildSignatureParameterString(fields: Record<string, string>, passphrase?: string): string {
-  const params = buildOrderedSearchParams(fields);
-  let paramString = params.toString();
+  let paramString = buildOrderedEncodedPairs(fields).join("&");
   const p = passphrase?.trim();
   if (p) {
-    const encodedPassphrase = new URLSearchParams({ passphrase: p }).toString().slice("passphrase=".length);
-    paramString += `&passphrase=${encodedPassphrase}`;
+    paramString += `&passphrase=${payFastUrlEncode(p)}`;
   }
   return paramString;
 }
@@ -61,9 +96,9 @@ function buildPayFastSignature(fields: Record<string, string>, passphrase?: stri
 
 /** Same key order and encoding as the string used for signing, then signature. */
 function buildPayFastQueryString(fields: Record<string, string>, signature: string): string {
-  const params = buildOrderedSearchParams(fields);
-  params.append("signature", signature);
-  return params.toString();
+  const pairs = buildOrderedEncodedPairs(fields);
+  pairs.push(`signature=${signature}`);
+  return pairs.join("&");
 }
 
 export function buildPayFastPaymentUrl(params: {
@@ -98,5 +133,13 @@ export function buildPayFastPaymentUrl(params: {
   const signature = buildPayFastSignature(fields, passphrase);
   const query = buildPayFastQueryString(fields, signature);
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
+
+  if (process.env.PAYFAST_DEBUG_SIGNATURE === "true") {
+    const signatureString = buildSignatureParameterString(fields, passphrase);
+    console.log("[PayFast] signature string:", signatureString);
+    console.log("[PayFast] signature hash:", signature);
+    console.log("[PayFast] redirect query:", query);
+  }
+
   return `${baseUrl}?${query}`;
 }
