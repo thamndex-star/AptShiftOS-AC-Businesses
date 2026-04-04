@@ -16,11 +16,11 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
 }
 
 /**
- * Strict RFC 3986 style encoding for PayFast payload/signature consistency.
- * Keeps spaces as %20 (never "+") and is used for both hash input and query string.
+ * PayFast requires "+" for spaces in the redirect query (NOT %20).
+ * We encode safely, then convert %20 → +
  */
 function payFastUrlEncode(value: string): string {
-  return encodeURIComponent(value);
+  return encodeURIComponent(value).replace(/%20/g, "+");
 }
 
 /** Same keys/values as rawData, alphabetically sorted — signature only. */
@@ -37,7 +37,13 @@ function getOrderedEntriesForQuery(rawData: Record<string, string>): Array<[stri
 
 function generatePayfastSignature(sortedEntries: Array<[string, string]>): { baseString: string; signature: string } {
   const baseString = sortedEntries.map(([key, value]) => `${key}=${value}`).join("&");
+
+  console.log("[PayFast] BASE STRING:", baseString);
+
   const signature = createHash("md5").update(baseString).digest("hex");
+
+  console.log("[PayFast] SIGNATURE:", signature);
+
   return { baseString, signature };
 }
 
@@ -64,7 +70,7 @@ export function buildPayFastPaymentUrl(params: {
     throw new Error("PayFast merchant env vars are missing");
   }
 
-  // Field order matches PayFast checkout form; query string uses this order (not alphabetical).
+  // Field order matters for redirect query
   const rawData = collectNonEmptyFields({
     merchant_id: merchantId,
     merchant_key: merchantKey,
@@ -81,11 +87,11 @@ export function buildPayFastPaymentUrl(params: {
   const { baseString, signature } = generatePayfastSignature(sortedEntries);
   const queryEntries = getOrderedEntriesForQuery(rawData);
   const query = buildPayFastQueryString(queryEntries, signature);
+
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
 
-  console.log("RAW DATA:", rawData);
-  console.log("BASE STRING:", baseString);
-  console.log("FINAL QUERY:", query);
+  console.log("[PayFast] RAW DATA:", rawData);
+  console.log("[PayFast] FINAL QUERY:", query);
 
   return `${baseUrl}?${query}`;
 }
