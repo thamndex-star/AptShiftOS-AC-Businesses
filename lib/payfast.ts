@@ -3,20 +3,48 @@ import { createHash } from "crypto";
 const PAYFAST_LIVE_URL = "https://www.payfast.co.za/eng/process";
 const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
 
-type PayFastPayload = Record<string, string | number>;
-
-function encode(value: string) {
+/**
+ * Single encoding pass for PayFast: encodeURIComponent(trim(value)), then spaces as "+"
+ * (aligns with PHP urlencode used in PayFast examples; avoids double-encoding).
+ */
+function payFastEncodeValue(value: string): string {
   return encodeURIComponent(value.trim()).replace(/%20/g, "+");
 }
 
-function buildSignature(payload: PayFastPayload, passphrase?: string) {
-  const base = Object.keys(payload)
-    .sort()
-    .map((key) => `${key}=${encode(String(payload[key]))}`)
-    .join("&");
+/** Keep only non-empty string values (after trim). */
+function collectNonEmptyFields(entries: Record<string, string | number>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(entries)) {
+    const str = typeof raw === "number" ? raw.toString() : String(raw).trim();
+    if (str !== "") {
+      out[key] = str;
+    }
+  }
+  return out;
+}
 
-  const source = passphrase ? `${base}&passphrase=${encode(passphrase)}` : base;
-  return createHash("md5").update(source).digest("hex");
+/** Alphabetically sorted keys; passphrase appended last as &passphrase=... when set. */
+function buildSignatureParameterString(fields: Record<string, string>, passphrase?: string): string {
+  const keys = Object.keys(fields).sort((a, b) => a.localeCompare(b, "en"));
+  const pairs = keys.map((key) => `${key}=${payFastEncodeValue(fields[key])}`);
+  let paramString = pairs.join("&");
+  const p = passphrase?.trim();
+  if (p) {
+    paramString += `&passphrase=${payFastEncodeValue(p)}`;
+  }
+  return paramString;
+}
+
+function buildPayFastSignature(fields: Record<string, string>, passphrase?: string): string {
+  return createHash("md5").update(buildSignatureParameterString(fields, passphrase)).digest("hex");
+}
+
+/** Same key order and encoding as the string used for signing (plus signature). */
+function buildPayFastQueryString(fields: Record<string, string>, signature: string): string {
+  const keys = Object.keys(fields).sort((a, b) => a.localeCompare(b, "en"));
+  const pairs = keys.map((key) => `${key}=${payFastEncodeValue(fields[key])}`);
+  pairs.push(`signature=${signature}`);
+  return pairs.join("&");
 }
 
 export function buildPayFastPaymentUrl(params: {
@@ -36,7 +64,7 @@ export function buildPayFastPaymentUrl(params: {
     throw new Error("PayFast merchant env vars are missing");
   }
 
-  const payload: PayFastPayload = {
+  const fields = collectNonEmptyFields({
     merchant_id: merchantId,
     merchant_key: merchantKey,
     amount: params.amount.toFixed(2),
@@ -46,13 +74,10 @@ export function buildPayFastPaymentUrl(params: {
     notify_url: params.notifyUrl,
     m_payment_id: params.workspaceId,
     custom_str1: params.workspaceId,
-  };
+  });
 
-  const signature = buildSignature(payload, passphrase);
-  const query = new URLSearchParams(
-    Object.entries({ ...payload, signature }).map(([k, v]) => [k, String(v)]),
-  ).toString();
-
+  const signature = buildPayFastSignature(fields, passphrase);
+  const query = buildPayFastQueryString(fields, signature);
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
   return `${baseUrl}?${query}`;
 }
