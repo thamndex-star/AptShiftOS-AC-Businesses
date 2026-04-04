@@ -16,38 +16,46 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
 }
 
 /**
- * PayFast requires "+" for spaces in the redirect query (NOT %20).
- * We encode safely, then convert %20 → +
+ * PayFast requires "+" for spaces in redirect query
  */
 function payFastUrlEncode(value: string): string {
   return encodeURIComponent(value).replace(/%20/g, "+");
 }
 
-/** Same keys/values as rawData, alphabetically sorted — signature only. */
+/** Sort ONLY for signature */
 function getSortedEntriesForSignature(rawData: Record<string, string>): Array<[string, string]> {
   return Object.entries(rawData)
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .sort(([a], [b]) => a.localeCompare(b));
 }
 
-/** Preserve rawData insertion order — redirect query only (do not sort). */
+/** Keep original order for redirect query */
 function getOrderedEntriesForQuery(rawData: Record<string, string>): Array<[string, string]> {
   return Object.entries(rawData).filter(([, value]) => value !== undefined && value !== null && value !== "");
 }
 
+/**
+ * 🚨 CRITICAL FIX:
+ * Signature must use URL-ENCODED values (RFC3986)
+ * BUT spaces must remain %20 (NOT +)
+ */
 function generatePayfastSignature(sortedEntries: Array<[string, string]>): { baseString: string; signature: string } {
-  const baseString = sortedEntries.map(([key, value]) => `${key}=${value}`).join("&");
+  const baseString = sortedEntries
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`) // encode here
+    .join("&");
 
   console.log("[PayFast] BASE STRING:", baseString);
 
-  const signature = createHash("md5").update(baseString).digest("hex");
+  const signature = createHash("md5")
+    .update(baseString)
+    .digest("hex");
 
   console.log("[PayFast] SIGNATURE:", signature);
 
   return { baseString, signature };
 }
 
-/** Encode values in original field order; append signature last. */
+/** Build redirect query (original order + + encoding) */
 function buildPayFastQueryString(orderedEntries: Array<[string, string]>, signature: string): string {
   const pairs = orderedEntries.map(([key, value]) => `${key}=${payFastUrlEncode(value)}`);
   pairs.push(`signature=${signature}`);
@@ -70,7 +78,6 @@ export function buildPayFastPaymentUrl(params: {
     throw new Error("PayFast merchant env vars are missing");
   }
 
-  // Field order matters for redirect query
   const rawData = collectNonEmptyFields({
     merchant_id: merchantId,
     merchant_key: merchantKey,
@@ -85,6 +92,7 @@ export function buildPayFastPaymentUrl(params: {
 
   const sortedEntries = getSortedEntriesForSignature(rawData);
   const { baseString, signature } = generatePayfastSignature(sortedEntries);
+
   const queryEntries = getOrderedEntriesForQuery(rawData);
   const query = buildPayFastQueryString(queryEntries, signature);
 
