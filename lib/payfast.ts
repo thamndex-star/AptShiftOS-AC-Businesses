@@ -62,17 +62,6 @@ function payFastUrlEncode(value: string): string {
   return encodeURIComponent(value);
 }
 
-function buildOrderedRawPairs(fields: Record<string, string>): string[] {
-  const pairs: string[] = [];
-  for (const key of PAYFAST_FORM_FIELD_ORDER) {
-    const val = fields[key];
-    if (val !== undefined && val !== "") {
-      pairs.push(`${key}=${val}`);
-    }
-  }
-  return pairs;
-}
-
 function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
   const pairs: string[] = [];
   for (const key of PAYFAST_FORM_FIELD_ORDER) {
@@ -84,23 +73,21 @@ function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
   return pairs;
 }
 
-/** Document field order; passphrase appended last as &passphrase=... when set. */
-function buildSignatureParameterString(fields: Record<string, string>, passphrase?: string): string {
-  let paramString = buildOrderedRawPairs(fields).join("&");
-  const p = passphrase?.trim();
-  if (p) {
-    paramString += `&passphrase=${p}`;
-  }
-  return paramString;
+function generatePayfastSignature(data: Record<string, string>): string {
+  const filtered = Object.entries(data).filter(
+    ([, value]) => value !== undefined && value !== null && value !== "",
+  );
+  const sorted = filtered.sort(([a], [b]) => a.localeCompare(b));
+  const baseString = sorted.map(([key, value]) => `${key}=${value}`).join("&");
+
+  console.log("[PayFast] signature base string:", baseString);
+
+  const signature = createHash("md5").update(baseString).digest("hex");
+  console.log("[PayFast] signature:", signature);
+  return signature;
 }
 
-function buildPayFastSignature(fields: Record<string, string>, passphrase?: string): string {
-  const string = buildSignatureParameterString(fields, passphrase);
-  console.log("[PayFast] signature base string:", string);
-  return createHash("md5").update(string).digest("hex");
-}
-
-/** Same key order and encoding as the string used for signing, then signature. */
+/** Build encoded redirect query and append generated signature. */
 function buildPayFastQueryString(fields: Record<string, string>, signature: string): string {
   const pairs = buildOrderedEncodedPairs(fields);
   pairs.push(`signature=${signature}`);
@@ -117,7 +104,6 @@ export function buildPayFastPaymentUrl(params: {
 }) {
   const merchantId = process.env.PAYFAST_MERCHANT_ID;
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
-  const passphrase = process.env.PAYFAST_PASSPHRASE;
   const sandbox = process.env.PAYFAST_SANDBOX === "true";
 
   if (!merchantId || !merchantKey) {
@@ -136,7 +122,7 @@ export function buildPayFastPaymentUrl(params: {
     custom_str1: params.workspaceId,
   });
 
-  const signature = buildPayFastSignature(fields, passphrase);
+  const signature = generatePayfastSignature(fields);
   const query = buildPayFastQueryString(fields, signature);
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
 
