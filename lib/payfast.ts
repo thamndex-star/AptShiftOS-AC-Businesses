@@ -62,6 +62,17 @@ function payFastUrlEncode(value: string): string {
   return encodeURIComponent(value);
 }
 
+function buildOrderedRawPairs(fields: Record<string, string>): string[] {
+  const pairs: string[] = [];
+  for (const key of PAYFAST_FORM_FIELD_ORDER) {
+    const val = fields[key];
+    if (val !== undefined && val !== "") {
+      pairs.push(`${key}=${val}`);
+    }
+  }
+  return pairs;
+}
+
 function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
   const pairs: string[] = [];
   for (const key of PAYFAST_FORM_FIELD_ORDER) {
@@ -75,10 +86,10 @@ function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
 
 /** Document field order; passphrase appended last as &passphrase=... when set. */
 function buildSignatureParameterString(fields: Record<string, string>, passphrase?: string): string {
-  let paramString = buildOrderedEncodedPairs(fields).join("&");
+  let paramString = buildOrderedRawPairs(fields).join("&");
   const p = passphrase?.trim();
   if (p) {
-    paramString += `&passphrase=${payFastUrlEncode(p)}`;
+    paramString += `&passphrase=${p}`;
   }
   return paramString;
 }
