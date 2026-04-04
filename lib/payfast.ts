@@ -23,10 +23,16 @@ function payFastUrlEncode(value: string): string {
   return encodeURIComponent(value);
 }
 
-function getSortedEntries(rawData: Record<string, string>): Array<[string, string]> {
+/** Same keys/values as rawData, alphabetically sorted — signature only. */
+function getSortedEntriesForSignature(rawData: Record<string, string>): Array<[string, string]> {
   return Object.entries(rawData)
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .sort(([a], [b]) => a.localeCompare(b));
+}
+
+/** Preserve rawData insertion order — redirect query only (do not sort). */
+function getOrderedEntriesForQuery(rawData: Record<string, string>): Array<[string, string]> {
+  return Object.entries(rawData).filter(([, value]) => value !== undefined && value !== null && value !== "");
 }
 
 function generatePayfastSignature(sortedEntries: Array<[string, string]>): { baseString: string; signature: string } {
@@ -35,9 +41,9 @@ function generatePayfastSignature(sortedEntries: Array<[string, string]>): { bas
   return { baseString, signature };
 }
 
-/** Build encoded redirect query and append generated signature. */
-function buildPayFastQueryString(sortedEntries: Array<[string, string]>, signature: string): string {
-  const pairs = sortedEntries.map(([key, value]) => `${key}=${payFastUrlEncode(value)}`);
+/** Encode values in original field order; append signature last. */
+function buildPayFastQueryString(orderedEntries: Array<[string, string]>, signature: string): string {
+  const pairs = orderedEntries.map(([key, value]) => `${key}=${payFastUrlEncode(value)}`);
   pairs.push(`signature=${signature}`);
   return pairs.join("&");
 }
@@ -58,21 +64,23 @@ export function buildPayFastPaymentUrl(params: {
     throw new Error("PayFast merchant env vars are missing");
   }
 
+  // Field order matches PayFast checkout form; query string uses this order (not alphabetical).
   const rawData = collectNonEmptyFields({
     merchant_id: merchantId,
     merchant_key: merchantKey,
-    amount: params.amount.toFixed(2),
-    item_name: params.itemName,
     return_url: params.returnUrl,
     cancel_url: params.cancelUrl ?? params.returnUrl,
     notify_url: params.notifyUrl,
     m_payment_id: params.workspaceId,
+    amount: params.amount.toFixed(2),
+    item_name: params.itemName,
     custom_str1: params.workspaceId,
   });
 
-  const sortedEntries = getSortedEntries(rawData);
+  const sortedEntries = getSortedEntriesForSignature(rawData);
   const { baseString, signature } = generatePayfastSignature(sortedEntries);
-  const query = buildPayFastQueryString(sortedEntries, signature);
+  const queryEntries = getOrderedEntriesForQuery(rawData);
+  const query = buildPayFastQueryString(queryEntries, signature);
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
 
   console.log("RAW DATA:", rawData);
