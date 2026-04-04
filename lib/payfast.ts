@@ -3,45 +3,6 @@ import { createHash } from "crypto";
 const PAYFAST_LIVE_URL = "https://www.payfast.co.za/eng/process";
 const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
 
-/**
- * PayFast custom form integration: signature uses the same parameter order as in their
- * documentation / PHP examples (foreach insertion order), not alphabetical.
- * @see https://developers.payfast.co.za/docs#step_2_signature
- */
-const PAYFAST_FORM_FIELD_ORDER = [
-  "merchant_id",
-  "merchant_key",
-  "return_url",
-  "cancel_url",
-  "notify_url",
-  "name_first",
-  "name_last",
-  "email_address",
-  "cell_number",
-  "m_payment_id",
-  "amount",
-  "item_name",
-  "item_description",
-  "custom_int1",
-  "custom_int2",
-  "custom_int3",
-  "custom_int4",
-  "custom_int5",
-  "custom_str1",
-  "custom_str2",
-  "custom_str3",
-  "custom_str4",
-  "custom_str5",
-  "email_confirmation",
-  "confirmation_address",
-  "payment_method",
-  "subscription_type",
-  "billing_date",
-  "recurring_amount",
-  "frequency",
-  "cycles",
-] as const;
-
 /** Keep only non-empty string values (after trim). */
 function collectNonEmptyFields(entries: Record<string, string | number>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -62,34 +23,21 @@ function payFastUrlEncode(value: string): string {
   return encodeURIComponent(value);
 }
 
-function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
-  const pairs: string[] = [];
-  for (const key of PAYFAST_FORM_FIELD_ORDER) {
-    const val = fields[key];
-    if (val !== undefined && val !== "") {
-      pairs.push(`${key}=${payFastUrlEncode(val)}`);
-    }
-  }
-  return pairs;
+function getSortedEntries(rawData: Record<string, string>): Array<[string, string]> {
+  return Object.entries(rawData)
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .sort(([a], [b]) => a.localeCompare(b));
 }
 
-function generatePayfastSignature(data: Record<string, string>): string {
-  const filtered = Object.entries(data).filter(
-    ([, value]) => value !== undefined && value !== null && value !== "",
-  );
-  const sorted = filtered.sort(([a], [b]) => a.localeCompare(b));
-  const baseString = sorted.map(([key, value]) => `${key}=${value}`).join("&");
-
-  console.log("[PayFast] signature base string:", baseString);
-
+function generatePayfastSignature(sortedEntries: Array<[string, string]>): { baseString: string; signature: string } {
+  const baseString = sortedEntries.map(([key, value]) => `${key}=${value}`).join("&");
   const signature = createHash("md5").update(baseString).digest("hex");
-  console.log("[PayFast] signature:", signature);
-  return signature;
+  return { baseString, signature };
 }
 
 /** Build encoded redirect query and append generated signature. */
-function buildPayFastQueryString(fields: Record<string, string>, signature: string): string {
-  const pairs = buildOrderedEncodedPairs(fields);
+function buildPayFastQueryString(sortedEntries: Array<[string, string]>, signature: string): string {
+  const pairs = sortedEntries.map(([key, value]) => `${key}=${payFastUrlEncode(value)}`);
   pairs.push(`signature=${signature}`);
   return pairs.join("&");
 }
@@ -110,7 +58,7 @@ export function buildPayFastPaymentUrl(params: {
     throw new Error("PayFast merchant env vars are missing");
   }
 
-  const fields = collectNonEmptyFields({
+  const rawData = collectNonEmptyFields({
     merchant_id: merchantId,
     merchant_key: merchantKey,
     amount: params.amount.toFixed(2),
@@ -122,14 +70,14 @@ export function buildPayFastPaymentUrl(params: {
     custom_str1: params.workspaceId,
   });
 
-  const signature = generatePayfastSignature(fields);
-  const query = buildPayFastQueryString(fields, signature);
+  const sortedEntries = getSortedEntries(rawData);
+  const { baseString, signature } = generatePayfastSignature(sortedEntries);
+  const query = buildPayFastQueryString(sortedEntries, signature);
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
 
-  if (process.env.PAYFAST_DEBUG_SIGNATURE === "true") {
-    console.log("[PayFast] signature hash:", signature);
-    console.log("[PayFast] redirect query:", query);
-  }
+  console.log("RAW DATA:", rawData);
+  console.log("BASE STRING:", baseString);
+  console.log("FINAL QUERY:", query);
 
   return `${baseUrl}?${query}`;
 }
