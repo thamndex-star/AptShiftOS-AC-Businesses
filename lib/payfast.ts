@@ -55,18 +55,11 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
 }
 
 /**
- * Mirror PHP urlencode behavior used in PayFast examples.
- * encodeURIComponent leaves a few chars unescaped, so we encode them explicitly.
+ * Strict RFC 3986 style encoding for PayFast payload/signature consistency.
+ * Keeps spaces as %20 (never "+") and is used for both hash input and query string.
  */
 function payFastUrlEncode(value: string): string {
-  return encodeURIComponent(value)
-    .replace(/!/g, "%21")
-    .replace(/'/g, "%27")
-    .replace(/\(/g, "%28")
-    .replace(/\)/g, "%29")
-    .replace(/\*/g, "%2A")
-    .replace(/~/g, "%7E")
-    .replace(/%20/g, "+");
+  return encodeURIComponent(value);
 }
 
 function buildOrderedEncodedPairs(fields: Record<string, string>): string[] {
@@ -91,7 +84,9 @@ function buildSignatureParameterString(fields: Record<string, string>, passphras
 }
 
 function buildPayFastSignature(fields: Record<string, string>, passphrase?: string): string {
-  return createHash("md5").update(buildSignatureParameterString(fields, passphrase)).digest("hex");
+  const string = buildSignatureParameterString(fields, passphrase);
+  console.log("[PayFast] signature base string:", string);
+  return createHash("md5").update(string).digest("hex");
 }
 
 /** Same key order and encoding as the string used for signing, then signature. */
@@ -135,8 +130,6 @@ export function buildPayFastPaymentUrl(params: {
   const baseUrl = sandbox ? PAYFAST_SANDBOX_URL : PAYFAST_LIVE_URL;
 
   if (process.env.PAYFAST_DEBUG_SIGNATURE === "true") {
-    const signatureString = buildSignatureParameterString(fields, passphrase);
-    console.log("[PayFast] signature string:", signatureString);
     console.log("[PayFast] signature hash:", signature);
     console.log("[PayFast] redirect query:", query);
   }
