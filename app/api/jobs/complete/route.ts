@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canManage, getActiveMembership } from "@/lib/auth";
+import { canManage, getActiveMembership, getActiveWorkspace, hasActiveSubscription } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 function wantsJson(request: Request) {
@@ -28,6 +28,8 @@ export async function POST(request: Request) {
   if (!member || !canManage(member.role)) {
     return err("Only owners or admins can complete jobs and create invoices.", 403);
   }
+  const workspace = await getActiveWorkspace(member);
+  if (!hasActiveSubscription(workspace)) return err("Subscription required. Please upgrade to continue.", 402);
 
   const jobId = await parseJobId(request);
   if (!jobId) return err("Job is required.", 400);

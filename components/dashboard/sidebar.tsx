@@ -7,6 +7,7 @@ const fullNav = [
   { href: "/leads", label: "Leads" },
   { href: "/jobs", label: "Jobs" },
   { href: "/invoices", label: "Invoices" },
+  { href: "/billing", label: "Billing" },
 ];
 
 const technicianNav = [

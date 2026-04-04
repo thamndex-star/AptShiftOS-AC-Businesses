@@ -14,10 +14,19 @@ export async function POST(request: Request) {
 
   const invite_code = generateInviteCode();
   const workspaceCurrency = normalizeWorkspaceCurrency(currency);
+  const trialExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: workspace, error: wsError } = await supabase
     .from("workspaces")
-    .insert({ name: name.trim(), currency: workspaceCurrency, invite_code, owner_user_id: profileId })
+    .insert({
+      name: name.trim(),
+      currency: workspaceCurrency,
+      invite_code,
+      owner_user_id: profileId,
+      subscription_status: "trial",
+      subscription_plan: "basic",
+      subscription_expires_at: trialExpiresAt,
+    })
     .select("id")
     .single();
 

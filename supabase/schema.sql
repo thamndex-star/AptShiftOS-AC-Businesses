@@ -19,6 +19,9 @@ create table if not exists workspaces (
   name text not null,
   currency text not null default 'USD',
   invite_code text not null unique,
+  subscription_status text not null default 'trial',
+  subscription_plan text not null default 'basic',
+  subscription_expires_at timestamptz not null default (now() + interval '7 days'),
   owner_user_id uuid not null references profiles(id),
   created_at timestamptz not null default now()
 );

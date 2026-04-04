@@ -60,6 +60,30 @@ export async function middleware(request: NextRequest) {
   if (!hasWorkspace && pathname.startsWith("/leads")) return NextResponse.redirect(new URL("/onboarding", request.url));
   if (!hasWorkspace && pathname.startsWith("/jobs")) return NextResponse.redirect(new URL("/onboarding", request.url));
   if (!hasWorkspace && pathname.startsWith("/invoices")) return NextResponse.redirect(new URL("/onboarding", request.url));
+  if (!hasWorkspace && pathname.startsWith("/billing")) return NextResponse.redirect(new URL("/onboarding", request.url));
+
+  if (hasWorkspace) {
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("subscription_status, subscription_expires_at")
+      .eq("id", profile.active_workspace_id)
+      .maybeSingle();
+
+    const expiresAt = workspace?.subscription_expires_at ? new Date(workspace.subscription_expires_at) : null;
+    const trialExpired = !expiresAt || expiresAt.getTime() < Date.now();
+    const subscriptionRestricted = workspace?.subscription_status !== "active" && trialExpired;
+    const isAppRoute =
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/leads") ||
+      pathname.startsWith("/jobs") ||
+      pathname.startsWith("/invoices") ||
+      pathname.startsWith("/billing");
+
+    if (subscriptionRestricted && isAppRoute && !pathname.startsWith("/dashboard")) {
+      return NextResponse.redirect(new URL("/dashboard?billing=required", request.url));
+    }
+  }
+
   if (hasWorkspace && (pathname === "/login" || pathname === "/signup" || pathname === "/onboarding")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

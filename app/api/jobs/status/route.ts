@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canManage, getActiveMembership } from "@/lib/auth";
+import { canManage, getActiveMembership, getActiveWorkspace, hasActiveSubscription } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 const transitions: Record<string, string[]> = {
@@ -33,6 +33,8 @@ export async function POST(request: Request) {
 
   const member = await getActiveMembership();
   if (!member) return err("You are not part of a workspace.", 403);
+  const workspace = await getActiveWorkspace(member);
+  if (!hasActiveSubscription(workspace)) return err("Subscription required. Please upgrade to continue.", 402);
 
   const { jobId, nextStatus } = await parseBody(request);
   if (!jobId || !nextStatus) return err("Job and status are required.", 400);

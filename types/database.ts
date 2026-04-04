@@ -16,6 +16,9 @@ export type Database = {
           name: string;
           currency: string;
           invite_code: string;
+          subscription_status: string;
+          subscription_plan: string;
+          subscription_expires_at: string;
           owner_user_id: string;
           created_at: string;
         };
@@ -24,10 +27,21 @@ export type Database = {
           name: string;
           currency?: string;
           invite_code: string;
+          subscription_status?: string;
+          subscription_plan?: string;
+          subscription_expires_at?: string;
           owner_user_id: string;
           created_at?: string;
         };
-        Update: { name?: string; currency?: string; invite_code?: string; owner_user_id?: string };
+        Update: {
+          name?: string;
+          currency?: string;
+          invite_code?: string;
+          subscription_status?: string;
+          subscription_plan?: string;
+          subscription_expires_at?: string;
+          owner_user_id?: string;
+        };
         Relationships: [];
       };
       workspace_members: {

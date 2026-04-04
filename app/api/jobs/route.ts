@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canManage, getActiveMembership } from "@/lib/auth";
+import { canManage, getActiveMembership, getActiveWorkspace, hasActiveSubscription } from "@/lib/auth";
 import { parseNumber } from "@/lib/helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +10,8 @@ export async function POST(request: Request) {
 
   const member = await getActiveMembership();
   if (!member || !canManage(member.role)) return NextResponse.redirect(new URL("/jobs", request.url));
+  const workspace = await getActiveWorkspace(member);
+  if (!hasActiveSubscription(workspace)) return NextResponse.redirect(new URL("/dashboard?billing=required", request.url));
 
   const form = await request.formData();
   const requiresDeposit = form.get("requires_deposit") === "true";

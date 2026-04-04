@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { PendingDepositsPanel, type PendingDepositRow } from "@/components/dashboard/pending-deposits-panel";
 import { InviteTeamPanel } from "@/components/dashboard/invite-team-panel";
@@ -17,6 +18,16 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const workspaceId = membership.workspace_id;
   const isTechnician = !canManage(membership.role);
+  const expiresAt = workspaceMeta?.subscription_expires_at ? new Date(workspaceMeta.subscription_expires_at) : null;
+  const trialDaysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000)) : 0;
+  const subscriptionActive =
+    workspaceMeta?.subscription_status === "active" && (!expiresAt || expiresAt.getTime() > Date.now());
+  const subscriptionExpired = !subscriptionActive && trialDaysLeft <= 0;
+  const billingLabel = subscriptionActive
+    ? "Active subscription"
+    : subscriptionExpired
+      ? "Trial expired. Upgrade required."
+      : `Trial ends in ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"}`;
 
   if (isTechnician) {
     const { data: assignedJobs } = await supabase
@@ -27,7 +38,14 @@ export default async function DashboardPage() {
       .order("scheduled_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
 
-    return <TechnicianJobsPanel jobs={assignedJobs ?? []} />;
+    return (
+      <section className="space-y-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-medium text-slate-900">{billingLabel}</p>
+        </div>
+        <TechnicianJobsPanel jobs={assignedJobs ?? []} />
+      </section>
+    );
   }
 
   const [
@@ -109,6 +127,15 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
         <p className="mt-1 text-sm text-slate-500">Cash flow and jobs at a glance.</p>
       </header>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-medium text-slate-900">{billingLabel}</p>
+        {!subscriptionActive ? (
+          <Link href="/api/payfast/checkout" className="inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+            Upgrade ($49/month)
+          </Link>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
