@@ -20,14 +20,6 @@ const PAYFAST_FORM_FIELD_ORDER = [
   "custom_str1",
 ] as const;
 
-/**
- * Single encoding pass for PayFast: encodeURIComponent(trim(value)), then spaces as "+"
- * (aligns with PHP urlencode used in PayFast examples; avoids double-encoding).
- */
-function payFastEncodeValue(value: string): string {
-  return encodeURIComponent(value.trim()).replace(/%20/g, "+");
-}
-
 /** Keep only non-empty string values (after trim). */
 function collectNonEmptyFields(entries: Record<string, string | number>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -40,23 +32,25 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
   return out;
 }
 
-function buildOrderedValuePairs(fields: Record<string, string>): string[] {
-  const pairs: string[] = [];
+function buildOrderedSearchParams(fields: Record<string, string>): URLSearchParams {
+  const params = new URLSearchParams();
   for (const key of PAYFAST_FORM_FIELD_ORDER) {
     const val = fields[key];
     if (val !== undefined && val !== "") {
-      pairs.push(`${key}=${payFastEncodeValue(val)}`);
+      params.append(key, val);
     }
   }
-  return pairs;
+  return params;
 }
 
 /** Document field order; passphrase appended last as &passphrase=... when set. */
 function buildSignatureParameterString(fields: Record<string, string>, passphrase?: string): string {
-  let paramString = buildOrderedValuePairs(fields).join("&");
+  const params = buildOrderedSearchParams(fields);
+  let paramString = params.toString();
   const p = passphrase?.trim();
   if (p) {
-    paramString += `&passphrase=${payFastEncodeValue(p)}`;
+    const encodedPassphrase = new URLSearchParams({ passphrase: p }).toString().slice("passphrase=".length);
+    paramString += `&passphrase=${encodedPassphrase}`;
   }
   return paramString;
 }
@@ -67,9 +61,9 @@ function buildPayFastSignature(fields: Record<string, string>, passphrase?: stri
 
 /** Same key order and encoding as the string used for signing, then signature. */
 function buildPayFastQueryString(fields: Record<string, string>, signature: string): string {
-  const pairs = buildOrderedValuePairs(fields);
-  pairs.push(`signature=${signature}`);
-  return pairs.join("&");
+  const params = buildOrderedSearchParams(fields);
+  params.append("signature", signature);
+  return params.toString();
 }
 
 export function buildPayFastPaymentUrl(params: {
