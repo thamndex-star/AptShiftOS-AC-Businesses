@@ -4,6 +4,23 @@ const PAYFAST_LIVE_URL = "https://www.payfast.co.za/eng/process";
 const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
 
 /**
+ * PayFast custom form integration: signature uses the same parameter order as in their
+ * documentation / PHP examples (foreach insertion order), not alphabetical.
+ * @see https://developers.payfast.co.za/docs#step_2_signature
+ */
+const PAYFAST_FORM_FIELD_ORDER = [
+  "merchant_id",
+  "merchant_key",
+  "return_url",
+  "cancel_url",
+  "notify_url",
+  "m_payment_id",
+  "amount",
+  "item_name",
+  "custom_str1",
+] as const;
+
+/**
  * Single encoding pass for PayFast: encodeURIComponent(trim(value)), then spaces as "+"
  * (aligns with PHP urlencode used in PayFast examples; avoids double-encoding).
  */
@@ -23,11 +40,20 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
   return out;
 }
 
-/** Alphabetically sorted keys; passphrase appended last as &passphrase=... when set. */
+function buildOrderedValuePairs(fields: Record<string, string>): string[] {
+  const pairs: string[] = [];
+  for (const key of PAYFAST_FORM_FIELD_ORDER) {
+    const val = fields[key];
+    if (val !== undefined && val !== "") {
+      pairs.push(`${key}=${payFastEncodeValue(val)}`);
+    }
+  }
+  return pairs;
+}
+
+/** Document field order; passphrase appended last as &passphrase=... when set. */
 function buildSignatureParameterString(fields: Record<string, string>, passphrase?: string): string {
-  const keys = Object.keys(fields).sort((a, b) => a.localeCompare(b, "en"));
-  const pairs = keys.map((key) => `${key}=${payFastEncodeValue(fields[key])}`);
-  let paramString = pairs.join("&");
+  let paramString = buildOrderedValuePairs(fields).join("&");
   const p = passphrase?.trim();
   if (p) {
     paramString += `&passphrase=${payFastEncodeValue(p)}`;
@@ -39,10 +65,9 @@ function buildPayFastSignature(fields: Record<string, string>, passphrase?: stri
   return createHash("md5").update(buildSignatureParameterString(fields, passphrase)).digest("hex");
 }
 
-/** Same key order and encoding as the string used for signing (plus signature). */
+/** Same key order and encoding as the string used for signing, then signature. */
 function buildPayFastQueryString(fields: Record<string, string>, signature: string): string {
-  const keys = Object.keys(fields).sort((a, b) => a.localeCompare(b, "en"));
-  const pairs = keys.map((key) => `${key}=${payFastEncodeValue(fields[key])}`);
+  const pairs = buildOrderedValuePairs(fields);
   pairs.push(`signature=${signature}`);
   return pairs.join("&");
 }
