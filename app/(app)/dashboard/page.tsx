@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PayFastUpgradeButton } from "@/components/billing/payfast-upgrade-button";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { PendingDepositsPanel, type PendingDepositRow } from "@/components/dashboard/pending-deposits-panel";
 import { InviteTeamPanel } from "@/components/dashboard/invite-team-panel";
@@ -131,9 +131,10 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-slate-900">{billingLabel}</p>
         {!subscriptionActive ? (
-          <Link href="/api/payfast/checkout" className="inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-            Upgrade ($49/month)
-          </Link>
+          <PayFastUpgradeButton
+            label="Upgrade ($49/month)"
+            className="inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+          />
         ) : null}
       </div>
 

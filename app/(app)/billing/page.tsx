@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PayFastUpgradeButton } from "@/components/billing/payfast-upgrade-button";
 import { Card } from "@/components/ui/card";
 import { canManage, getActiveWorkspace, requireWorkspace } from "@/lib/auth";
 
@@ -52,9 +52,10 @@ export default async function BillingPage() {
         </div>
         {!isActive ? (
           <div className="flex flex-wrap gap-3">
-            <Link href="/api/payfast/checkout" className="inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-              Upgrade now ($49/month)
-            </Link>
+            <PayFastUpgradeButton
+              label="Upgrade now ($49/month)"
+              className="inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            />
             <p className="self-center text-xs text-slate-500">You will be redirected to PayFast checkout.</p>
           </div>
         ) : null}
