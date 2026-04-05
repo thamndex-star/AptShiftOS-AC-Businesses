@@ -35,10 +35,14 @@ function getOrderedEntries(rawData: Record<string, string>): Array<[string, stri
   return Object.entries(rawData).filter(([, value]) => value !== undefined && value !== null && value !== "");
 }
 
-function generateSignature(entries: Array<[string, string]>): string {
-  const baseString = entries
-    .map(([key, value]) => `${key}=${encode(value)}`)
+function generateSignature(entries: Array<[string, string]>, passphrase?: string): string {
+  let baseString = entries
+    .map(([key, value]) => `${key}=${value}`)
     .join("&");
+
+  if (passphrase) {
+    baseString += `&passphrase=${passphrase}`;
+  }
 
   console.log("[PayFast] BASE STRING:", baseString);
 
@@ -65,6 +69,7 @@ export function buildPayFastPaymentUrl(params: {
 }) {
   const merchantId = process.env.PAYFAST_MERCHANT_ID;
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
+  const passphrase = process.env.PAYFAST_PASSPHRASE?.trim() || undefined;
   const sandbox = process.env.PAYFAST_SANDBOX === "true";
 
   if (!merchantId || !merchantKey) {
@@ -84,7 +89,7 @@ export function buildPayFastPaymentUrl(params: {
   });
 
   const sorted = getSortedEntries(rawData);
-  const signature = generateSignature(sorted);
+  const signature = generateSignature(sorted, passphrase);
   const ordered = getOrderedEntries(rawData);
   const query = buildQuery(ordered, signature);
 
