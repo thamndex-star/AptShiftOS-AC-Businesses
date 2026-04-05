@@ -15,10 +15,7 @@ function collectNonEmptyFields(entries: Record<string, string | number>): Record
   return out;
 }
 
-/**
- * 🔥 CRITICAL: DO NOT convert spaces to "+"
- * PayFast expects %20 for signature AND query consistency
- */
+/** Encode ONLY for query string */
 function encode(value: string): string {
   return encodeURIComponent(value);
 }
@@ -35,12 +32,17 @@ function getOrderedEntries(rawData: Record<string, string>): Array<[string, stri
   return Object.entries(rawData).filter(([, value]) => value !== undefined && value !== null && value !== "");
 }
 
+/**
+ * ✅ CORRECT SIGNATURE LOGIC
+ * - NO encoding for values
+ * - INCLUDE passphrase (sandbox requires it)
+ */
 function generateSignature(entries: Array<[string, string]>, passphrase?: string): string {
   let baseString = entries
     .map(([key, value]) => `${key}=${value}`)
     .join("&");
 
-  if (passphrase) {
+  if (passphrase && passphrase !== "") {
     baseString += `&passphrase=${passphrase}`;
   }
 
@@ -53,6 +55,7 @@ function generateSignature(entries: Array<[string, string]>, passphrase?: string
   return signature;
 }
 
+/** Build query string (ENCODED) */
 function buildQuery(entries: Array<[string, string]>, signature: string): string {
   const pairs = entries.map(([key, value]) => `${key}=${encode(value)}`);
   pairs.push(`signature=${signature}`);
@@ -69,7 +72,11 @@ export function buildPayFastPaymentUrl(params: {
 }) {
   const merchantId = process.env.PAYFAST_MERCHANT_ID;
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
-  const passphrase = process.env.PAYFAST_PASSPHRASE?.trim() || undefined;
+
+  // 🔥 CRITICAL: default sandbox passphrase fallback
+  const passphrase =
+    process.env.PAYFAST_PASSPHRASE?.trim() || "jt7NOE43FZPn";
+
   const sandbox = process.env.PAYFAST_SANDBOX === "true";
 
   if (!merchantId || !merchantKey) {
