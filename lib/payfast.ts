@@ -20,13 +20,6 @@ function encode(value: string): string {
   return encodeURIComponent(value);
 }
 
-/** Sort alphabetically for signature */
-function getSortedEntries(rawData: Record<string, string>): Array<[string, string]> {
-  return Object.entries(rawData)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
-    .sort(([a], [b]) => a.localeCompare(b));
-}
-
 /** Keep original order for query */
 function getOrderedEntries(rawData: Record<string, string>): Array<[string, string]> {
   return Object.entries(rawData).filter(([, value]) => value !== undefined && value !== null && value !== "");
@@ -95,9 +88,8 @@ export function buildPayFastPaymentUrl(params: {
     custom_str1: params.workspaceId,
   });
 
-  const sorted = getSortedEntries(rawData);
-  const signature = generateSignature(sorted, passphrase);
   const ordered = getOrderedEntries(rawData);
+  const signature = generateSignature(ordered, passphrase);
   const query = buildQuery(ordered, signature);
 
   console.log("[PayFast] FINAL QUERY:", query);
