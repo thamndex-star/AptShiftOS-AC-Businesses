@@ -171,7 +171,7 @@ async function handleInitiate(request: Request) {
 
   const origin = new URL(request.url).origin;
   const payload = buildPayFastFormPayload({
-    amount: 49,
+    amount: 499,
     itemName: "AptShift OS Subscription",
     workspaceId: member.workspace_id,
     returnUrl: `${origin}/billing/payfast-complete`,
