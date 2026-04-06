@@ -160,10 +160,14 @@ export function generatePayFastSignature(
   return createHash("md5").update(baseString).digest("hex");
 }
 
+/**
+ * ✅ FIXED HERE — now supports 2 arguments
+ */
 export function verifyPayFastItnSignature(
-  data: Record<string, any>
+  data: Record<string, any>,
+  configOverride?: PayFastConfig
 ): boolean {
-  const config = resolvePayFastConfigFromEnv();
+  const config = configOverride || resolvePayFastConfigFromEnv();
 
   const provided = (data.signature || "").toLowerCase();
   if (!provided) return false;
@@ -210,7 +214,7 @@ export function buildPayFastFormPayload(params: BuildPayloadParams) {
   return {
     paymentUrl: getPayFastProcessUrl(config.sandbox),
     formData,
-    paymentId: params.paymentId || params.workspaceId, // ✅ FIXED HERE
+    paymentId: params.paymentId || params.workspaceId,
   };
 }
 
