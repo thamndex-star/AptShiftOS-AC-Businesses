@@ -214,3 +214,15 @@ export function buildPayFastPaymentUrl(params: BuildPayloadParams): string {
   const payload = buildPayFastFormPayload(params);
   return `${payload.paymentUrl}?${buildQuery(payload.formData)}`;
 }
+export function getPayFastDiagnostics() {
+  const config = resolvePayFastConfigFromEnv();
+
+  return {
+    merchantIdConfigured: !!config.merchantId,
+    merchantIdPreview: `${config.merchantId.slice(0, 3)}...${config.merchantId.slice(-2)}`,
+    usePassphrase: config.usePassphrase,
+    hasPassphrase: !!config.passphrase,
+    sandbox: config.sandbox,
+    paymentUrl: getPayFastProcessUrl(config.sandbox),
+  };
+}
