@@ -37,6 +37,31 @@ const PAYFAST_OUTGOING_FIELDS = [
   "confirmation_address",
 ] as const;
 
+const PAYFAST_ITN_FIELDS = [
+  "m_payment_id",
+  "pf_payment_id",
+  "payment_status",
+  "item_name",
+  "item_description",
+  "amount_gross",
+  "amount_fee",
+  "amount_net",
+  "custom_str1",
+  "custom_str2",
+  "custom_str3",
+  "custom_str4",
+  "custom_str5",
+  "custom_int1",
+  "custom_int2",
+  "custom_int3",
+  "custom_int4",
+  "custom_int5",
+  "name_first",
+  "name_last",
+  "email_address",
+  "merchant_id",
+] as const;
+
 type PayFastConfig = {
   merchantId: string;
   merchantKey: string;
@@ -79,10 +104,6 @@ function orderedPairs(data: PayFastFieldMap, fieldOrder: readonly string[]): str
   return pairs;
 }
 
-/**
- * ✅ FIXED CONFIG
- * Ensures sandbox ALWAYS uses correct passphrase
- */
 export function resolvePayFastConfigFromEnv(): PayFastConfig {
   const merchantId = process.env.PAYFAST_MERCHANT_ID?.trim() ?? "";
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY?.trim() ?? "";
@@ -93,7 +114,6 @@ export function resolvePayFastConfigFromEnv(): PayFastConfig {
 
   const sandbox = process.env.PAYFAST_SANDBOX === "true";
 
-  // 🔥 CRITICAL FIX
   const passphrase =
     process.env.PAYFAST_PASSPHRASE?.trim() ||
     (sandbox ? "jt7NOE43FZPn" : "");
@@ -132,6 +152,26 @@ export function generatePayFastSignature(
 ): string {
   const baseString = buildSignatureString(data, fieldOrder, config);
   return createHash("md5").update(baseString).digest("hex");
+}
+
+/**
+ * ✅ FIXED: RESTORED THIS FUNCTION (this was breaking your build)
+ */
+export function verifyPayFastItnSignature(
+  data: Record<string, any>
+): boolean {
+  const config = resolvePayFastConfigFromEnv();
+
+  const provided = (data.signature || "").toLowerCase();
+  if (!provided) return false;
+
+  const expected = generatePayFastSignature(
+    data,
+    PAYFAST_ITN_FIELDS,
+    config
+  );
+
+  return expected === provided;
 }
 
 export function getPayFastProcessUrl(sandbox: boolean): string {
