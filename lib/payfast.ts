@@ -80,6 +80,13 @@ type BuildPayloadParams = {
   returnUrl: string;
   notifyUrl: string;
   cancelUrl?: string;
+
+  // ✅ FIXED: add missing fields
+  userEmail?: string;
+  firstName?: string;
+  lastName?: string;
+  paymentId?: string;
+  customStr2?: string;
 };
 
 export function pfEncode(value: string): string {
@@ -154,9 +161,6 @@ export function generatePayFastSignature(
   return createHash("md5").update(baseString).digest("hex");
 }
 
-/**
- * ✅ FIXED: RESTORED THIS FUNCTION (this was breaking your build)
- */
 export function verifyPayFastItnSignature(
   data: Record<string, any>
 ): boolean {
@@ -191,6 +195,12 @@ export function buildPayFastFormPayload(params: BuildPayloadParams) {
     amount: params.amount.toFixed(2),
     item_name: params.itemName,
     custom_str1: params.workspaceId,
+
+    // ✅ optional fields
+    email_address: params.userEmail || "",
+    name_first: params.firstName || "",
+    name_last: params.lastName || "",
+    custom_str2: params.customStr2 || "",
   };
 
   formData.signature = generatePayFastSignature(
@@ -214,6 +224,7 @@ export function buildPayFastPaymentUrl(params: BuildPayloadParams): string {
   const payload = buildPayFastFormPayload(params);
   return `${payload.paymentUrl}?${buildQuery(payload.formData)}`;
 }
+
 export function getPayFastDiagnostics() {
   const config = resolvePayFastConfigFromEnv();
 
