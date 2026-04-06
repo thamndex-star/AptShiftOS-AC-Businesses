@@ -81,7 +81,6 @@ type BuildPayloadParams = {
   notifyUrl: string;
   cancelUrl?: string;
 
-  // ✅ FIXED: add missing fields
   userEmail?: string;
   firstName?: string;
   lastName?: string;
@@ -196,7 +195,6 @@ export function buildPayFastFormPayload(params: BuildPayloadParams) {
     item_name: params.itemName,
     custom_str1: params.workspaceId,
 
-    // ✅ optional fields
     email_address: params.userEmail || "",
     name_first: params.firstName || "",
     name_last: params.lastName || "",
@@ -212,6 +210,7 @@ export function buildPayFastFormPayload(params: BuildPayloadParams) {
   return {
     paymentUrl: getPayFastProcessUrl(config.sandbox),
     formData,
+    paymentId: params.paymentId || params.workspaceId, // ✅ FIXED HERE
   };
 }
 
